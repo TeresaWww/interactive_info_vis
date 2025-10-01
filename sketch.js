@@ -1,7 +1,7 @@
 //custom variables for y-coordinate of sun & horizon
 let shapeHeight;
 
-let designWidth = 400;
+let designWidth = 800;
 let designHeight= 400;
 let horizon ;
 function setup() {
@@ -31,7 +31,7 @@ function draw() {
   rect(width/4, shapeHeight, width/2);
   textSize(20);
   fill("black");
-  text('Hi! My name is...', currentWidth/2, shapeHeight/2);
+  text('Hi! My name is Teresa.', currentWidth/2, shapeHeight/2);
   
 
 
