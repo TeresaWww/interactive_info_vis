@@ -1,4 +1,4 @@
-window.DEFAULT_SKETCH='sk2'
+window.DEFAULT_SKETCH='sk3'
 
 // Global registry used by sketch files to register instance-mode factories
 window._sketchRegistry = window._sketchRegistry || {};
