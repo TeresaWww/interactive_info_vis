@@ -1,6 +1,6 @@
 registerSketch('sk2', function (p) {
   let pancakes = [];
-  let prevElapsed = -1; // track previous 0..240s to detect wrap
+  let prevElapsed = -1;
 
   let plateW, plateH, plateCX, plateCY;
   let panW, panH, panCX, panCY;
@@ -23,7 +23,7 @@ registerSketch('sk2', function (p) {
     plateCX = p.width / 2;
     plateCY = p.height - plateH * 0.65 - 20;
 
-    // Countdown (safe above a 10-stack)
+    // Countdown clock
     const rectW = Math.min(plateW * 0.7, minDim * 0.42);
     const rectH = Math.max(24, rectW * 0.16);
     const estPancakeH = plateH * 0.55;
@@ -35,7 +35,7 @@ registerSketch('sk2', function (p) {
     const topSurfaceY = (plateCY - plateH * 0.10);
     countdownCY = topSurfaceY - estThickness * maxStack - rectH * 0.8 - safeGap;
 
-    // Pan (ellipse like plate)
+    // Pan
     const aspect = plateH / plateW;
     const panBase = minDim * 0.36;
     panW = panBase; panH = panW * aspect;
@@ -44,7 +44,7 @@ registerSketch('sk2', function (p) {
 
   p.windowResized = function () { p.resizeCanvas(p.windowWidth, p.windowHeight); computeLayout(); };
 
-  // --- Time helpers
+  // Time helpers
   function nowParts() {
     const d = new Date();
     return {
@@ -61,7 +61,7 @@ registerSketch('sk2', function (p) {
     return total % 240;
   }
 
-  // --- UI elements
+  // UI elements
   function drawDigitalClock() {
     const { h, m, s } = nowParts();
     const label = p.nf(h, 2) + ':' + p.nf(m, 2) + ':' + p.nf(s, 2);
@@ -101,7 +101,7 @@ registerSketch('sk2', function (p) {
     const label = p.nf(mm, 2) + ':' + p.nf(ss, 2);
     drawRectClockFrame(countdownCX, countdownCY, countdownW, countdownH, label, elapsed / 240);
 
-    // 🥞 Pancake counter below
+    // 🥞 Pancake counter
     p.noStroke();
     p.fill(50);
     p.textAlign(p.CENTER, p.TOP);
@@ -115,7 +115,6 @@ registerSketch('sk2', function (p) {
     p.fill(60); p.ellipse(0, 0, w, h);
     p.fill(30); p.ellipse(0, 0, w * 0.92, h * 0.92);
 
-    // handle
     p.push(); p.rotate(-30);
     p.fill(40); p.rectMode(p.CENTER);
     const handleL = Math.max(60, w * 0.55), handleT = Math.max(10, h * 0.14);
@@ -133,7 +132,7 @@ registerSketch('sk2', function (p) {
     p.pop();
   };
 
-  // --- Pancake color ramps & drawing
+  // --- Pancake color changing over time in pan
   const batterCol = () => p.color(255, 235, 190);
   const goldenCol = () => p.color(222, 184, 135);
   const darkCol   = () => p.color(180, 140, 100);
@@ -177,7 +176,7 @@ registerSketch('sk2', function (p) {
     p.pop();
   }
 
-  // --- Falling pancakes / stack
+  // Falling pancakes / stack
   function plateTopY() { return plateCY - plateH * 0.10; }
   function pancakeThickness(h) { return h * 0.3; }
 
@@ -242,7 +241,6 @@ registerSketch('sk2', function (p) {
     pancakes.forEach(drawFallingPancake);
     maybeClearFullStack();
 
-    // Drop pancake when 4-min cycle resets
     if (prevElapsed >= 0 && elapsed < prevElapsed) {
       spawnFallingPancake(2);
     }
