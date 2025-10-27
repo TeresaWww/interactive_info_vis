@@ -1,3 +1,5 @@
+window.DEFAULT_SKETCH='sk2'
+
 // Global registry used by sketch files to register instance-mode factories
 window._sketchRegistry = window._sketchRegistry || {};
 window._sketchInstances = window._sketchInstances || {};
