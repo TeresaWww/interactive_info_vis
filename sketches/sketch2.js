@@ -19,24 +19,52 @@ registerSketch('sk2', function (p) {
     plateCX = p.width / 2;
     plateCY = p.height - plateH * 0.65 - 20;
 
+    const rectW = Math.min(plateW * 0.7, minDim * 0.42); 
+    const rectH = Math.max(24, rectW * 0.16); 
+    const estPancakeH = plateH * 0.55;
+    const estThickness = estPancakeH * 0.3; 
+    const maxStack = 10; 
+    const safeGap = 16; 
+    countdownCX = plateCX; 
+    countdownW = rectW; countdownH = rectH; 
+    const topSurfaceY = (plateCY - plateH * 0.10); countdownCY = topSurfaceY - estThickness * maxStack - rectH * 0.8 - safeGap;
+
     const aspect = plateH / plateW;
     const panBase = minDim * 0.36;
     panW = panBase; panH = panW * aspect;
-    panCX = p.width / 2; panCY = (clockY + (plateCY - plateH * 1.05)) / 2 + 40;
-
-    const rectW = Math.min(plateW * 0.7, minDim * 0.42);
-    const rectH = Math.max(24, rectW * 0.16);
-    countdownW = rectW; countdownH = rectH;
-    countdownCX = plateCX; countdownCY = plateCY - plateH * 1.05;
+    panCX = p.width / 2; panCY = (clockY + countdownCY) / 2 + 40;
   }
 
   p.windowResized = function () { p.resizeCanvas(p.windowWidth, p.windowHeight); computeLayout(); };
 
+  function nowParts(){ const d=new Date(); return {s:d.getSeconds(), ms:d.getMilliseconds()}; }
+
   function drawDigitalClock() {
-    const d = new Date(); const h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
-    const label = p.nf(h, 2) + ':' + p.nf(m, 2) + ':' + p.nf(s, 2);
+    const d = new Date(); const h=d.getHours(), m=d.getMinutes(), s=d.getSeconds();
+    const label = p.nf(h,2)+':'+p.nf(m,2)+':'+p.nf(s,2);
     p.noStroke(); p.fill(20); p.textAlign(p.CENTER, p.TOP); p.textSize(50);
-    p.text(label, p.width / 2, clockY);
+    p.text(label, p.width/2, clockY);
+  }
+
+  function drawRectClockFrame(cx, cy, w, h, label, progress01) {
+    p.push(); p.translate(cx, cy); p.rectMode(p.CENTER);
+    p.noFill(); p.stroke(50); p.strokeWeight(3); p.rect(0, 0, w, h, 10);
+    const faceW = w*0.96, faceH = h*0.82;
+    p.noStroke(); p.fill(255,255,255,235); p.rect(0, 0, faceW, faceH, 8);
+    const barPad = Math.max(4, h*0.06), barW = faceW - barPad*2, barH = Math.max(4, h*0.12);
+    const barY = faceH/2 - barPad - barH/2;
+    p.fill(230); p.rect(0, barY, barW, barH, barH/2);
+    const fillW = p.constrain(barW*progress01, 0, barW);
+    p.fill(80,140,255); p.rect(-barW/2 + fillW/2, barY, fillW, barH, barH/2);
+    p.fill(20); p.textAlign(p.CENTER,p.CENTER); p.textSize(Math.min(h*0.52,w*0.22)); p.text(label, 0, -faceH*0.1);
+    p.pop();
+  }
+
+  function drawCountdownClock() {
+    const {s, ms} = nowParts();
+    const cycle = (s % 30) + ms/1000;
+    const label = '00:' + p.nf(Math.floor(cycle), 2);
+    drawRectClockFrame(countdownCX, countdownCY, countdownW, countdownH, label, cycle/30);
   }
 
   function drawPanEllipse(cx, cy, w, h) {
@@ -53,9 +81,9 @@ registerSketch('sk2', function (p) {
 
   p.drawPlate = function (cx, cy, w, h) {
     p.push(); p.translate(cx, cy);
-    p.noStroke(); p.fill(0, 0, 0, 25); p.ellipse(0, h * 0.15, w * 0.9, h * 0.35);
+    p.noStroke(); p.fill(0,0,0,25); p.ellipse(0, h*0.15, w*0.9, h*0.35);
     p.fill(245); p.stroke(200); p.strokeWeight(2); p.ellipse(0, 0, w, h);
-    p.noStroke(); p.fill(255); p.ellipse(0, 0, w * 0.8, h * 0.7);
+    p.noStroke(); p.fill(255); p.ellipse(0, 0, w*0.8, h*0.7);
     p.pop();
   };
 
@@ -63,6 +91,7 @@ registerSketch('sk2', function (p) {
     p.background(250);
     drawDigitalClock();
     drawPanEllipse(panCX, panCY, panW, panH);
+    drawCountdownClock();
     p.drawPlate(plateCX, plateCY, plateW, plateH);
   };
 });
