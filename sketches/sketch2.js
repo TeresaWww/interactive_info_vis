@@ -100,6 +100,13 @@ registerSketch('sk2', function (p) {
     const ss = secs % 60;
     const label = p.nf(mm, 2) + ':' + p.nf(ss, 2);
     drawRectClockFrame(countdownCX, countdownCY, countdownW, countdownH, label, elapsed / 240);
+
+    // 🥞 Pancake counter below
+    p.noStroke();
+    p.fill(50);
+    p.textAlign(p.CENTER, p.TOP);
+    p.textSize(22);
+    p.text(`Pancakes: ${pancakes.length} 🥞`, plateCX, plateCY + plateH * 0.6);
   }
 
   // --- Pan & plate
@@ -132,33 +139,28 @@ registerSketch('sk2', function (p) {
   const darkCol   = () => p.color(180, 140, 100);
 
   function tone(t01) {
-    // 0..1: batter -> golden -> dark
     if (t01 <= 0) return batterCol();
     if (t01 >= 1) return darkCol();
     if (t01 < 0.5) return p.lerpColor(batterCol(), goldenCol(), t01 * 2);
     return p.lerpColor(goldenCol(), darkCol(), (t01 - 0.5) * 2);
   }
 
-  // Draw pancake on the pan with flip at 120s
   function drawPanPancake(elapsed) {
     const aspect = plateH / plateW;
     const w = panW * 0.80;
     const h = w * aspect;
 
-    // time since last flip (0..120)
     const tHalf = (elapsed < 120) ? elapsed : (elapsed - 120);
     const fry01 = p.constrain(tHalf / 120, 0, 1);
     const colorTop = tone(fry01);
 
-    // quick flip animation around 120s
-    const flipWindow = 0.6; // seconds total
-    let rot = 0;
-    let scaleY = 1;
+    // flip animation
+    const flipWindow = 0.6;
+    let rot = 0, scaleY = 1;
     if (Math.abs(elapsed - 120) < flipWindow / 2) {
-      const u = (elapsed - 120) / (flipWindow / 2); // -1..1
-      const k = (u + 1) / 2;                        // 0..1
-      rot = p.map(k, 0, 1, 0, 180);                 // rotate 0 -> 180 deg
-      // squash during flip (at mid-flip, looks thin)
+      const u = (elapsed - 120) / (flipWindow / 2);
+      const k = (u + 1) / 2;
+      rot = p.map(k, 0, 1, 0, 180);
       scaleY = 1 - 0.8 * Math.sin(k * p.PI);
     }
 
@@ -170,8 +172,6 @@ registerSketch('sk2', function (p) {
     p.noStroke();
     p.fill(colorTop);
     p.ellipse(0, 0, w, h);
-
-    // soft highlight
     p.fill(255, 255, 255, 35);
     p.ellipse(-w * 0.18, -h * 0.22, w * 0.55, h * 0.35);
     p.pop();
@@ -185,14 +185,10 @@ registerSketch('sk2', function (p) {
     const w = plateW * 0.70;
     const h = plateH * 0.55;
     const pc = {
-      x: panCX,
-      y: panCY,
-      w, h,
+      x: panCX, y: panCY, w, h,
       rot: p.random(-0.12, 0.12),
-      landed: false,
-      vy: 0,
-      colorStage: finalDarknessStage, // we drop a fully cooked pancake
-      targetY: 0
+      landed: false, vy: 0,
+      colorStage: finalDarknessStage, targetY: 0
     };
     const idx = pancakes.length;
     pc.targetY = plateTopY() - idx * pancakeThickness(h);
@@ -202,12 +198,8 @@ registerSketch('sk2', function (p) {
   function updateFallingPancake(pc) {
     if (pc.landed) return;
     const g = Math.max(0.25, p.height * 0.0012);
-    pc.vy += g;
-    pc.y += pc.vy;
-    pc.rot += 0.3 * p.sin(p.frameCount * 2);
-    if (pc.y >= pc.targetY) {
-      pc.y = pc.targetY; pc.landed = true; pc.vy = 0; pc.rot = 0;
-    }
+    pc.vy += g; pc.y += pc.vy; pc.rot += 0.3 * p.sin(p.frameCount * 2);
+    if (pc.y >= pc.targetY) { pc.y = pc.targetY; pc.landed = true; pc.vy = 0; pc.rot = 0; }
   }
 
   function colorForStage(stage) { return [batterCol(), goldenCol(), darkCol()][p.constrain(stage, 0, 2)]; }
@@ -239,25 +231,19 @@ registerSketch('sk2', function (p) {
 
     drawDigitalClock();
 
-    // Elapsed 0..240
     const elapsed = elapsedInCycle240();
 
-    // Countdown synced to 4-min cycle
     drawCountdownClock(elapsed);
-
-    // Pan & on-pan pancake with flip at 120s
     drawPanEllipse(panCX, panCY, panW, panH);
     drawPanPancake(elapsed);
 
-    // Plate and stack
     p.drawPlate(plateCX, plateCY, plateW, plateH);
     pancakes.forEach(updateFallingPancake);
     pancakes.forEach(drawFallingPancake);
     maybeClearFullStack();
 
-    // Detect wrap (when elapsed goes backwards due to modulo 240), then drop
+    // Drop pancake when 4-min cycle resets
     if (prevElapsed >= 0 && elapsed < prevElapsed) {
-      // At 4 minutes reached -> reset display (happens automatically) and drop pancake
       spawnFallingPancake(2);
     }
     prevElapsed = elapsed;
