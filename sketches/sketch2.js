@@ -92,7 +92,6 @@ registerSketch('sk2', function (p) {
     p.pop();
   };
 
-  // Pancake on pan (browns by 10s)
   const batterCol = () => p.color(255, 235, 190);
   const goldenCol = () => p.color(222, 184, 135);
   const darkCol   = () => p.color(180, 140, 100);
@@ -109,7 +108,6 @@ registerSketch('sk2', function (p) {
     p.pop();
   }
 
-  // --- NEW: falling pancakes + stack
   function plateTopY() { return plateCY - plateH * 0.10; }
   function pancakeThickness(h) { return h * 0.3; }
 
@@ -133,12 +131,16 @@ registerSketch('sk2', function (p) {
     let c = colorForStage(p.colorStage);
     if (p.landed) c = p.lerpColor(c, darkCol(), 0.15);
     p.push(); p.translate(p.x, p.y); p.rotate(p.rot);
-    // thin border
     p.stroke(90, 60, 30); p.strokeWeight(1.5);
     p.fill(c); p.ellipse(0, 0, p.w, p.h);
-    // highlight
     p.noStroke(); p.fill(255,255,255,35); p.ellipse(-p.w*0.18, -p.h*0.22, p.w*0.55, p.h*0.35);
     p.pop();
+  }
+
+  function maybeClearFullStack() {
+    if (pancakes.length >= 15 && pancakes.every(pc => pc.landed)) {
+      pancakes = [];
+    }
   }
 
   p.draw = function () {
@@ -153,7 +155,6 @@ registerSketch('sk2', function (p) {
     drawPanPancake(cycleFloor);
     p.drawPlate(plateCX, plateCY, plateW, plateH);
 
-    // spawn at 29->0 transition
     if (prevCycle !== -1 && Math.floor(prevCycle) === 29 && Math.floor(cycle) === 0) {
       spawnFallingPancake(2);
     }
@@ -161,5 +162,7 @@ registerSketch('sk2', function (p) {
 
     pancakes.forEach(updateFalling);
     pancakes.forEach(drawFalling);
+
+    maybeClearFullStack();
   };
 });
