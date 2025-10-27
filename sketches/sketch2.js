@@ -1,4 +1,7 @@
 registerSketch('sk2', function (p) {
+  let pancakes = [];
+  let prevCycle = -1;
+
   let plateW, plateH, plateCX, plateCY;
   let panW, panH, panCX, panCY;
   let countdownCX, countdownCY, countdownW, countdownH;
@@ -19,15 +22,16 @@ registerSketch('sk2', function (p) {
     plateCX = p.width / 2;
     plateCY = p.height - plateH * 0.65 - 20;
 
-    const rectW = Math.min(plateW * 0.7, minDim * 0.42); 
-    const rectH = Math.max(24, rectW * 0.16); 
+    const rectW = Math.min(plateW * 0.7, minDim * 0.42);
+    const rectH = Math.max(24, rectW * 0.16);
     const estPancakeH = plateH * 0.55;
-    const estThickness = estPancakeH * 0.3; 
-    const maxStack = 10; 
-    const safeGap = 16; 
-    countdownCX = plateCX; 
-    countdownW = rectW; countdownH = rectH; 
-    const topSurfaceY = (plateCY - plateH * 0.10); countdownCY = topSurfaceY - estThickness * maxStack - rectH * 0.8 - safeGap;
+    const estThickness = estPancakeH * 0.3;
+    const maxStack = 10;
+    const safeGap = 16;
+    countdownCX = plateCX;
+    countdownW = rectW; countdownH = rectH;
+    const topSurfaceY = (plateCY - plateH * 0.10);
+    countdownCY = topSurfaceY - estThickness * maxStack - rectH * 0.8 - safeGap;
 
     const aspect = plateH / plateW;
     const panBase = minDim * 0.36;
@@ -65,6 +69,7 @@ registerSketch('sk2', function (p) {
     const cycle = (s % 30) + ms/1000;
     const label = '00:' + p.nf(Math.floor(cycle), 2);
     drawRectClockFrame(countdownCX, countdownCY, countdownW, countdownH, label, cycle/30);
+    return cycle;
   }
 
   function drawPanEllipse(cx, cy, w, h) {
@@ -87,11 +92,74 @@ registerSketch('sk2', function (p) {
     p.pop();
   };
 
+  // Pancake on pan (browns by 10s)
+  const batterCol = () => p.color(255, 235, 190);
+  const goldenCol = () => p.color(222, 184, 135);
+  const darkCol   = () => p.color(180, 140, 100);
+  function colorForStage(stage) { return [batterCol(), goldenCol(), darkCol()][p.constrain(stage,0,2)]; }
+  function drawPanPancake(cycleFloor) {
+    const aspect = plateH / plateW;
+    const w = panW * 0.80;
+    const h = w * aspect;
+    const stage = Math.floor(cycleFloor / 10);
+    const c = colorForStage(stage);
+    p.push(); p.translate(panCX, panCY);
+    p.noStroke(); p.fill(c); p.ellipse(0, 0, w, h);
+    p.fill(255, 255, 255, 35); p.ellipse(-w*0.18, -h*0.22, w*0.55, h*0.35);
+    p.pop();
+  }
+
+  // --- NEW: falling pancakes + stack
+  function plateTopY() { return plateCY - plateH * 0.10; }
+  function pancakeThickness(h) { return h * 0.3; }
+
+  function spawnFallingPancake(initialStage) {
+    const w = plateW * 0.70;
+    const h = plateH * 0.55;
+    const pc = { x: panCX, y: panCY, w, h, rot: p.random(-0.12, 0.12), landed: false, vy: 0, colorStage: initialStage, targetY: 0 };
+    const idx = pancakes.length;
+    pc.targetY = plateTopY() - idx * pancakeThickness(h);
+    pancakes.push(pc);
+  }
+
+  function updateFalling(p) {
+    if (p.landed) return;
+    const g = Math.max(0.25, p.height * 0.0012);
+    p.vy += g; p.y += p.vy; p.rot += 0.3 * p.sin(p.frameCount * 2);
+    if (p.y >= p.targetY) { p.y = p.targetY; p.landed = true; p.vy = 0; p.rot = 0; }
+  }
+
+  function drawFalling(p) {
+    let c = colorForStage(p.colorStage);
+    if (p.landed) c = p.lerpColor(c, darkCol(), 0.15);
+    p.push(); p.translate(p.x, p.y); p.rotate(p.rot);
+    // thin border
+    p.stroke(90, 60, 30); p.strokeWeight(1.5);
+    p.fill(c); p.ellipse(0, 0, p.w, p.h);
+    // highlight
+    p.noStroke(); p.fill(255,255,255,35); p.ellipse(-p.w*0.18, -p.h*0.22, p.w*0.55, p.h*0.35);
+    p.pop();
+  }
+
   p.draw = function () {
     p.background(250);
+
     drawDigitalClock();
+
+    const cycle = drawCountdownClock();
+    const cycleFloor = Math.floor(cycle);
+
     drawPanEllipse(panCX, panCY, panW, panH);
-    drawCountdownClock();
+    drawPanPancake(cycleFloor);
     p.drawPlate(plateCX, plateCY, plateW, plateH);
+
+    // spawn at 29->0 transition
+    if (prevCycle !== -1 && Math.floor(prevCycle) === 29 && Math.floor(cycle) === 0) {
+      spawnFallingPancake(2);
+    }
+    prevCycle = cycle;
+
+    pancakes.forEach(updateFalling);
+    pancakes.forEach(drawFalling);
   };
 });
