@@ -1,6 +1,6 @@
 registerSketch('sk2', function (p) {
   let pancakes = [];
-  let prevElapsed = -1;
+  let prevRemaining = -1;
 
   let plateW, plateH, plateCX, plateCY;
   let panW, panH, panCX, panCY;
@@ -9,6 +9,7 @@ registerSketch('sk2', function (p) {
 
   p.setup = function () {
     p.createCanvas(800, 800);
+    p.canvas.style.display = 'block';
     p.angleMode(p.DEGREES);
     computeLayout();
   };
@@ -17,13 +18,11 @@ registerSketch('sk2', function (p) {
     const minDim = Math.min(p.width, p.height);
     clockY = 40;
 
-    // Plate
     plateW = p.width * 0.38;
     plateH = Math.min(p.height * 0.18, plateW * 0.45);
     plateCX = p.width / 2;
     plateCY = p.height - plateH * 0.65 - 20;
 
-    // Countdown clock
     const rectW = Math.min(plateW * 0.7, minDim * 0.42);
     const rectH = Math.max(24, rectW * 0.16);
     const estPancakeH = plateH * 0.55;
@@ -35,33 +34,23 @@ registerSketch('sk2', function (p) {
     const topSurfaceY = (plateCY - plateH * 0.10);
     countdownCY = topSurfaceY - estThickness * maxStack - rectH * 0.8 - safeGap;
 
-    // Pan
     const aspect = plateH / plateW;
     const panBase = minDim * 0.36;
     panW = panBase; panH = panW * aspect;
     panCX = p.width / 2; panCY = (clockY + countdownCY) / 2 + 40;
   }
 
-  p.windowResized = function () { p.resizeCanvas(p.windowWidth, p.windowHeight); computeLayout(); };
-
-  // Time helpers
   function nowParts() {
     const d = new Date();
-    return {
-      h: d.getHours(),
-      m: d.getMinutes(),
-      s: d.getSeconds(),
-      ms: d.getMilliseconds()
-    };
-  }
-  // Elapsed seconds in current 4-minute cycle [0,240)
-  function elapsedInCycle240() {
-    const { m, s, ms } = nowParts();
-    const total = m * 60 + s + ms / 1000;
-    return total % 240;
+    return { h: d.getHours(), m: d.getMinutes(), s: d.getSeconds(), ms: d.getMilliseconds() };
   }
 
-  // UI elements
+  function remainingInCycle240() {
+    const { m, s, ms } = nowParts();
+    const total = m * 60 + s + ms / 1000;
+    return 240 - (total % 240);
+  }
+
   function drawDigitalClock() {
     const { h, m, s } = nowParts();
     const label = p.nf(h, 2) + ':' + p.nf(m, 2) + ':' + p.nf(s, 2);
@@ -93,15 +82,15 @@ registerSketch('sk2', function (p) {
     p.pop();
   }
 
-  // Countdown: show mm:ss from 00:00 to 04:00, reset at 04:00
-  function drawCountdownClock(elapsed) {
-    const secs = Math.floor(elapsed); // 0..239
+  function drawCountdownClock(remaining) {
+    const secs = Math.floor(remaining);
     const mm = Math.floor(secs / 60);
     const ss = secs % 60;
     const label = p.nf(mm, 2) + ':' + p.nf(ss, 2);
-    drawRectClockFrame(countdownCX, countdownCY, countdownW, countdownH, label, elapsed / 240);
 
-    // 🥞 Pancake counter
+    const consumed01 = 1 - (remaining / 240);
+    drawRectClockFrame(countdownCX, countdownCY, countdownW, countdownH, label, consumed01);
+
     p.noStroke();
     p.fill(50);
     p.textAlign(p.CENTER, p.TOP);
@@ -109,7 +98,6 @@ registerSketch('sk2', function (p) {
     p.text(`Pancakes: ${pancakes.length} 🥞`, plateCX, plateCY + plateH * 0.6);
   }
 
-  // --- Pan & plate
   function drawPanEllipse(cx, cy, w, h) {
     p.push(); p.translate(cx, cy); p.noStroke();
     p.fill(60); p.ellipse(0, 0, w, h);
@@ -132,7 +120,7 @@ registerSketch('sk2', function (p) {
     p.pop();
   };
 
-  // --- Pancake color changing over time in pan
+  // Pancake color changing over time in pan
   const batterCol = () => p.color(255, 235, 190);
   const goldenCol = () => p.color(222, 184, 135);
   const darkCol   = () => p.color(180, 140, 100);
@@ -144,20 +132,23 @@ registerSketch('sk2', function (p) {
     return p.lerpColor(goldenCol(), darkCol(), (t01 - 0.5) * 2);
   }
 
-  function drawPanPancake(elapsed) {
+  function thatAspect(a){ return Math.max(0.0001, a); }
+
+  function drawPanPancake(elapsedUp) {
     const aspect = plateH / plateW;
     const w = panW * 0.80;
-    const h = w * aspect;
+    const h = w * thatAspect(aspect);
 
-    const tHalf = (elapsed < 120) ? elapsed : (elapsed - 120);
+    // 2 minutes per side
+    const tHalf = (elapsedUp < 120) ? elapsedUp : (elapsedUp - 120);
     const fry01 = p.constrain(tHalf / 120, 0, 1);
     const colorTop = tone(fry01);
 
-    // flip animation
     const flipWindow = 0.6;
     let rot = 0, scaleY = 1;
-    if (Math.abs(elapsed - 120) < flipWindow / 2) {
-      const u = (elapsed - 120) / (flipWindow / 2);
+    const tFromFlip = Math.abs(elapsedUp - 120);
+    if (tFromFlip < flipWindow / 2) {
+      const u = (elapsedUp - 120) / (flipWindow / 2);
       const k = (u + 1) / 2;
       rot = p.map(k, 0, 1, 0, 180);
       scaleY = 1 - 0.8 * Math.sin(k * p.PI);
@@ -176,7 +167,6 @@ registerSketch('sk2', function (p) {
     p.pop();
   }
 
-  // Falling pancakes / stack
   function plateTopY() { return plateCY - plateH * 0.10; }
   function pancakeThickness(h) { return h * 0.3; }
 
@@ -230,20 +220,21 @@ registerSketch('sk2', function (p) {
 
     drawDigitalClock();
 
-    const elapsed = elapsedInCycle240();
+    const remaining = remainingInCycle240();
+    const elapsedUp = 240 - remaining;
 
-    drawCountdownClock(elapsed);
+    drawCountdownClock(remaining);
     drawPanEllipse(panCX, panCY, panW, panH);
-    drawPanPancake(elapsed);
+    drawPanPancake(elapsedUp);
 
     p.drawPlate(plateCX, plateCY, plateW, plateH);
     pancakes.forEach(updateFallingPancake);
     pancakes.forEach(drawFallingPancake);
     maybeClearFullStack();
 
-    if (prevElapsed >= 0 && elapsed < prevElapsed) {
+    if (prevRemaining >= 0 && remaining > prevRemaining) {
       spawnFallingPancake(2);
     }
-    prevElapsed = elapsed;
+    prevRemaining = remaining;
   };
 });
