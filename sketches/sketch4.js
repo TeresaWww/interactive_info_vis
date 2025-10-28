@@ -1,4 +1,5 @@
 registerSketch('sk4', function (p) {
+  let bulb = { x: 0, y: 0, size: 80 };
   let table = { x: 0, y: 0, w: 0, h: 0 };
   let clock = { x: 0, y: 0, w: 0, h: 0, radius: 12 };
 
@@ -14,6 +15,9 @@ registerSketch('sk4', function (p) {
   };
 
   function computeLayout() {
+    bulb.x = p.width / 2;
+    bulb.y = p.height * 0.18;
+
     table.w = p.width * 0.9;
     table.h = p.height * 0.25;
     table.x = (p.width - table.w) / 2;
@@ -26,13 +30,38 @@ registerSketch('sk4', function (p) {
   }
 
   p.draw = function () {
-    p.background('#e6e2c9');
+
+    const bg = p.drawingContext.createRadialGradient(bulb.x, bulb.y, 30, bulb.x, bulb.y, p.height);
+    bg.addColorStop(0, '#f5d571');
+    bg.addColorStop(1, '#e6e2c9');
+    p.drawingContext.fillStyle = bg;
+    p.rect(0, 0, p.width, p.height);
+
+    p.stroke(80);
+    p.strokeWeight(3);
+    p.line(bulb.x, 0, bulb.x, bulb.y - bulb.size * 0.6);
+
+    p.noStroke();
+    p.fill(255, 245, 160);
+    p.ellipse(bulb.x, bulb.y, bulb.size);
+    for (let r = 0; r < 5; r++) {
+      p.noFill();
+      p.stroke(255, 245, 160, 60 - r * 12);
+      p.strokeWeight(20 + r * 8);
+      p.ellipse(bulb.x, bulb.y, bulb.size + r * 25);
+    }
+
+    p.noStroke();
+    p.fill(150, 110, 70);
+    p.rect(table.x, table.y, table.w, table.h, 14);
+    p.fill(0, 30);
+    p.rect(table.x, table.y + table.h - 16, table.w, 16, 0, 0, 14, 14);
 
     drawClockBody(true);
     drawDigitalTime(true);
   };
 
-  function drawClockBody(lightMode) {
+  function drawClockBody() {
     p.strokeWeight(3);
     p.stroke(30);
     p.fill(25);
