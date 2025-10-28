@@ -1,6 +1,8 @@
 registerSketch('sk3', function (p) {
   p.setup = function () {
     p.createCanvas(800, 800);
+    p.canvas.style.display = 'block';
+
     p.textAlign(p.CENTER, p.CENTER);
     p.noStroke();
   };
@@ -15,8 +17,8 @@ registerSketch('sk3', function (p) {
     const cx = p.width / 2;
     const cy = p.height / 2;
     const R_HOURS = 280;
-    const R_MIN = 200;
-    const R_SEC = 120;
+    const R_MIN   = 200;
+    const R_SEC   = 120;
 
     const h = p.hour() % 12;
     const m = p.minute();

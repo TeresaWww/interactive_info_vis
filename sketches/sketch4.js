@@ -13,7 +13,7 @@ registerSketch('sk4', function (p) {
   };
 
   p.windowResized = function () {
-    p.resizeCanvas(p.windowWidth, p.windowHeight);
+    p.resizeCanvas(800, 800);
     computeLayout();
   };
 
