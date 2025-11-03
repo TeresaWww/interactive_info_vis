@@ -1,6 +1,7 @@
 registerSketch('sk5', function (p) {
   // ===== CONFIG =====
-  const CSV_PATH = 'mcdonalds_final.csv'; // adjust path if needed
+  const CSV_PATH = 'mcdonalds_final.csv';
+  const LOGO_PATH = 'mc_logo.png'; 
 
   // ===== THEME =====
   const RED = p.color('#C8102E');
@@ -15,22 +16,30 @@ registerSketch('sk5', function (p) {
     'Salads': p.color('#2A9D8F'),
     'Snacks & Sides': p.color('#E9C46A'),
     'Desserts': p.color('#FFB4A2'),
-    'Other': p.color('#F1FAEE')
   };
+
+  // ===== GROUPS (for selection) =====
+  const GROUPS = {
+    'Breakfast only': ['Breakfast'],
+    'Burgers & Sandwiches': ['Beef & Pork', 'Chicken & Fish'],
+    'Sides': ['Salads', 'Snacks & Sides', 'Desserts']
+  };
+  const GROUP_LABELS = Object.keys(GROUPS);
 
   // ===== STATE =====
   let items = [];
-  let selectedKey = 'protein_g';
-  let selector;
+  let filtered = [];
+  const selectedKey = 'protein_g'; // fix X-axis to Protein (g) per your request
+  let groupSelector;               // dropdown for the 3 groups
   let pinned = null;
   let hoverIdx = -1;
 
   // Layout
   const margin = 120;
   let plotX0, plotY0, plotX1, plotY1;
-  let xMin, xMax, yMin, yMax, xMedian, yMedian;
+  let xMin = 0, xMax = 1, yMin = 0, yMax = 1, xMedian = 0.5, yMedian = 0.5;
 
-  // CSV table
+  // CSV
   let table = null;
   const num = v => {
     const n = Number(v);
@@ -40,13 +49,14 @@ registerSketch('sk5', function (p) {
   // ---- LOAD CSV ----
   p.preload = function () {
     table = p.loadTable(CSV_PATH, 'csv', 'header');
+    logoImg = p.loadImage(LOGO_PATH, () => console.log("Logo loaded ✅"));
   };
 
   p.setup = function () {
     p.createCanvas(1080, 1080);
     p.textFont('Helvetica, Arial, sans-serif');
 
-    // Map CSV to objects
+    // Map CSV -> items
     if (table && table.getRowCount() > 0) {
       const mapped = [];
       for (let r = 0; r < table.getRowCount(); r++) {
@@ -62,18 +72,24 @@ registerSketch('sk5', function (p) {
       items = mapped.filter(d => Number.isFinite(d.calories) && d.calories > 0);
     }
 
-    // Axis selector
-    selector = p.createSelect();
-    selector.parent(p._userNode || document.body);
-    selector.option('Protein (g)', 'protein_g');
-    selector.option('Fat (g)', 'fat_g');
-    selector.option('Carbs (g)', 'carbs_g');
-    selector.selected('protein_g');
-    selector.changed(() => {
-      selectedKey = selector.value();
-      pinned = null;
-    });
+    // Group selector (3 options)
+    groupSelector = p.createSelect();
+    groupSelector.parent(p._userNode || document.body);
+    GROUP_LABELS.forEach(lbl => groupSelector.option(lbl, lbl));
+    groupSelector.selected(GROUP_LABELS[0]);
+    groupSelector.changed(() => applyFilter());
+    applyFilter(); // initial
+
+    // style will be set/positioned in draw()
   };
+
+  function applyFilter() {
+    const choice = groupSelector.value();
+    const allowed = GROUPS[choice] || [];
+    filtered = items.filter(d => allowed.includes(d.category));
+    pinned = null;
+    hoverIdx = -1;
+  }
 
   p.draw = function () {
     p.background(RED);
@@ -83,15 +99,16 @@ registerSketch('sk5', function (p) {
     plotX1 = p.width - margin;
     plotY1 = p.height - margin;
 
-    // Move dropdown to top-right corner
-    if (selector) {
-      selector.style('font-size', '14px');
-      selector.style('padding', '6px 10px');
-      selector.style('border-radius', '8px');
-      selector.style('border', '0');
-      selector.style('background', '#FFC72C');
-      selector.style('color', '#000');
-      selector.position(p.width - margin - selector.elt.offsetWidth, margin * 0.5);
+    // Move dropdown to top-right
+    if (groupSelector) {
+      groupSelector.style('font-size', '14px');
+      groupSelector.style('padding', '6px 10px');
+      groupSelector.style('border-radius', '8px');
+      groupSelector.style('border', '0');
+      groupSelector.style('outline', 'none');
+      groupSelector.style('background', '#FFC72C');
+      groupSelector.style('color', '#000');
+      groupSelector.position(p.width - margin - groupSelector.elt.offsetWidth, margin * 0.8);
     }
 
     drawMcArches(margin * 0.45, margin * 0.55, 70);
@@ -106,14 +123,24 @@ registerSketch('sk5', function (p) {
 
   // ======== DRAW HELPERS ========
   function drawMcArches(x, y, s) {
-    p.push();
-    p.noFill();
-    p.stroke(YELLOW);
-    p.strokeWeight(12);
-    p.arc(x - s * 0.3, y, s * 0.6, s, p.PI, 0);
-    p.arc(x + s * 0.3, y, s * 0.6, s, p.PI, 0);
-    p.line(x - s * 0.02, y, x + s * 0.02, y);
-    p.pop();
+    if (logoImg) {
+      // Draw PNG logo
+      p.push();
+      p.imageMode(p.CENTER);
+      const logoSize = s * 1; // scale up a bit
+      p.image(logoImg, x, y, logoSize, logoSize);
+      p.pop();
+    } else {
+      // Fallback to drawn arches if PNG not loaded
+      p.push();
+      p.noFill();
+      p.stroke(YELLOW);
+      p.strokeWeight(12);
+      p.arc(x - s * 0.3, y, s * 0.6, s, p.PI, 0);
+      p.arc(x + s * 0.3, y, s * 0.6, s, p.PI, 0);
+      p.line(x - s * 0.02, y, x + s * 0.02, y);
+      p.pop();
+    }
   }
 
   function drawTitles() {
@@ -122,20 +149,28 @@ registerSketch('sk5', function (p) {
     p.noStroke();
     p.textSize(28);
     p.textStyle(p.BOLD);
-    p.text('McMenu Nutrition Explorer', margin, margin * 0.6);
+    p.text('McProtein: Spot the Strongest Picks on the Menu', margin, margin * 0.6);
 
     p.textSize(16);
-    const xlabel = selectedKey === 'protein_g' ? 'Protein (g)'
-                  : selectedKey === 'fat_g' ? 'Fat (g)' : 'Carbs (g)';
-    p.text(`X: ${xlabel}`, margin, p.height - margin * 0.55);
-    p.text('Y: Calories', margin, p.height - margin * 0.35);
+    p.text('X: Protein (g)', margin, p.height - margin * 0.55);
+    p.text('Y: Calories',    margin, p.height - margin * 0.35);
+
+    // current group label
+    p.textSize(14);
+    p.textStyle(p.NORMAL);
+    const glabel = groupSelector ? groupSelector.value() : '';
+    p.text(`Group: ${glabel}`, margin * 1.5, margin * 0.9);
     p.pop();
   }
 
   function computeScales() {
-    if (items.length === 0) return;
-    const xs = items.map(d => d[selectedKey]);
-    const ys = items.map(d => d.calories);
+    const data = filtered.length ? filtered : items;
+    if (data.length === 0) {
+      xMin = 0; xMax = 1; yMin = 0; yMax = 1; xMedian = 0.5; yMedian = 0.5;
+      return;
+    }
+    const xs = data.map(d => d[selectedKey]);
+    const ys = data.map(d => d.calories);
     xMin = 0;
     xMax = Math.max(1, p.max(xs));
     yMin = 0;
@@ -171,7 +206,7 @@ registerSketch('sk5', function (p) {
     p.fill(YELLOW);
     p.textAlign(p.CENTER, p.TOP);
     p.text(xMin.toFixed(0), xScale(xMin), plotY1 + 8);
-    p.text(xMedian.toFixed(0), xm, plotY1 + 8);
+    p.text(xMedian.toFixed(0), xm,        plotY1 + 8);
     p.text(xMax.toFixed(0), xScale(xMax), plotY1 + 8);
 
     p.textAlign(p.RIGHT, p.CENTER);
@@ -190,31 +225,28 @@ registerSketch('sk5', function (p) {
     const xm = xScale(xMedian);
     const ym = yScale(yMedian);
     const cxTL = (plotX0 + xm) / 2, cyTL = (plotY0 + ym) / 2;
-    const cxTR = (xm + plotX1) / 2, cyTR = (plotY0 + ym) / 2;
-    const cxBL = (plotX0 + xm) / 2, cyBL = (ym + plotY1) / 2;
-    const cxBR = (xm + plotX1) / 2, cyBR = (ym + plotY1) / 2;
+    const cxTR = (xm + plotX1) / 2,  cyTR = (plotY0 + ym) / 2;
+    const cxBL = (plotX0 + xm) / 2,  cyBL = (ym + plotY1) / 2;
+    const cxBR = (xm + plotX1) / 2,  cyBR = (ym + plotY1) / 2;
 
-    const axisLabel = selectedKey === 'protein_g' ? 'Protein'
-                     : selectedKey === 'fat_g' ? 'Fat' : 'Carbs';
+    p.text(`Low Protein\nHigh Calories`, cxTL, cyTL);
+    p.text(`High Protein\nHigh Calories`, cxTR, cyTR);
+    p.text(`Low Protein\nLow Calories`,  cxBL, cyBL);
+    p.text(`High Protein\nLow Calories`, cxBR, cyBR);
 
-    p.text(`Low ${axisLabel}\nHigh Calories`, cxTL, cyTL);
-    p.text(`High ${axisLabel}\nHigh Calories`, cxTR, cyTR);
-    p.text(`Low ${axisLabel}\nLow Calories`, cxBL, cyBL);
-    p.text(`High ${axisLabel}\nLow Calories`, cxBR, cyBR);
-
-    if (selectedKey === 'protein_g') {
-      p.fill(YELLOW);
-      p.text(`High Protein\nLow Calories`, cxBR, cyBR);
-    }
+    // emphasize "healthy" narrative quadrant
+    p.fill(YELLOW);
+    p.text(`High Protein\nLow Calories`, cxBR, cyBR);
     p.pop();
   }
 
   function drawPoints() {
     hoverIdx = -1;
     const mouse = { x: p.mouseX, y: p.mouseY };
+    const data = filtered;
 
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
+    for (let i = 0; i < data.length; i++) {
+      const it = data[i];
       const x = xScale(it[selectedKey]);
       const y = yScale(it.calories);
       if (x < plotX0 || x > plotX1 || y < plotY0 || y > plotY1) continue;
@@ -235,26 +267,31 @@ registerSketch('sk5', function (p) {
   }
 
   function drawLegend() {
-    const cats = Object.keys(categoryColors);
-    const boxW = 160;
-    const boxH = cats.length * 20 + 20;
-    const x0 = p.width - margin - boxW;
+    // show only the categories in the current group
+    const glabel = groupSelector ? groupSelector.value() : GROUP_LABELS[0];
+    const cats = GROUPS[glabel] || [];
+    const boxW = 150;
+    const boxH = cats.length * 22 + 24;
+    const x0 = p.width - margin - boxW - 20;
     const y0 = p.height - margin - boxH - 20;
 
     p.push();
     p.noStroke();
     p.fill(255, 255, 255, 30);
     p.rect(x0 - 10, y0 - 10, boxW + 20, boxH + 20, 12);
+
     p.textSize(14);
     p.textAlign(p.LEFT, p.CENTER);
+    p.fill(YELLOW);
+    p.text('Categories', x0, y0 - 4);
 
     cats.forEach((cat, i) => {
-      const y = y0 + i * 20;
-      p.fill(categoryColors[cat]);
-      p.circle(x0, y, 12);
+      const yy = y0 + 18 + i * 22;
+      p.fill(categoryColors[cat] || WHITE);
+      p.circle(x0, yy, 12);
       p.fill(YELLOW);
       p.noStroke();
-      p.text(cat, x0 + 18, y);
+      p.text(cat, x0 + 18, yy);
     });
     p.pop();
   }
@@ -265,10 +302,10 @@ registerSketch('sk5', function (p) {
     if (pinned) idx = pinned.index;
     if (idx === -1) return;
 
-    const it = items[idx];
+    const it = filtered[idx];
     const x = xScale(it[selectedKey]);
     const y = yScale(it.calories);
-    const boxW = 280, boxH = 120;
+    const boxW = 300, boxH = 130;
     const bx = Math.min(Math.max(x + 16, plotX0), plotX1 - boxW);
     const by = Math.min(Math.max(y - boxH - 16, plotY0), plotY1 - boxH);
 
@@ -285,11 +322,11 @@ registerSketch('sk5', function (p) {
 
     p.textStyle(p.NORMAL);
     const lines = [
+      `Category: ${it.category}`,
       `Calories: ${it.calories}`,
       `Protein: ${it.protein_g} g`,
       `Fat: ${it.fat_g} g`,
-      `Carbs: ${it.carbs_g} g`,
-      `Category: ${it.category}`
+      `Carbs: ${it.carbs_g} g`
     ];
     for (let i = 0; i < lines.length; i++) {
       p.text(lines[i], bx + 12, by + 38 + i * 16);
