@@ -101,7 +101,7 @@ registerSketch('sk5', function (p) {
 
     // Move dropdown to top-right
     if (groupSelector) {
-      groupSelector.style('font-size', '14px');
+      groupSelector.style('font-size', '16px');
       groupSelector.style('padding', '6px 10px');
       groupSelector.style('border-radius', '8px');
       groupSelector.style('border', '0');
@@ -147,16 +147,16 @@ registerSketch('sk5', function (p) {
     p.push();
     p.fill(YELLOW);
     p.noStroke();
-    p.textSize(28);
+    p.textSize(29);
     p.textStyle(p.BOLD);
     p.text('McProtein: Spot the Strongest Picks on the Menu', margin, margin * 0.6);
 
-    p.textSize(16);
+    p.textSize(20);
     p.text('X: Protein (g)', margin, p.height - margin * 0.55);
     p.text('Y: Calories',    margin, p.height - margin * 0.35);
 
     // current group label
-    p.textSize(14);
+    p.textSize(20);
     p.textStyle(p.NORMAL);
     const glabel = groupSelector ? groupSelector.value() : '';
     p.text(`Group: ${glabel}`, margin * 1.5, margin * 0.9);
@@ -201,7 +201,7 @@ registerSketch('sk5', function (p) {
     p.line(xm, plotY0, xm, plotY1);
     p.line(plotX0, ym, plotX1, ym);
 
-    p.textSize(14);
+    p.textSize(20);
     p.noStroke();
     p.fill(YELLOW);
     p.textAlign(p.CENTER, p.TOP);
@@ -219,7 +219,7 @@ registerSketch('sk5', function (p) {
   function drawQuadrantLabels() {
     p.push();
     p.textAlign(p.CENTER, p.CENTER);
-    p.textSize(16);
+    p.textSize(32);
     p.fill(WHITE);
 
     const xm = xScale(xMedian);
@@ -280,7 +280,7 @@ registerSketch('sk5', function (p) {
     p.fill(255, 255, 255, 30);
     p.rect(x0 - 10, y0 - 10, boxW + 20, boxH + 20, 12);
 
-    p.textSize(14);
+    p.textSize(18);
     p.textAlign(p.LEFT, p.CENTER);
     p.fill(YELLOW);
     p.text('Categories', x0, y0 - 4);
